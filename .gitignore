@@ -1,1 +1,3 @@
 api_ids.json
+*.swp
+node_modules/
