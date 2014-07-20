@@ -4,7 +4,8 @@
  */
 var gapi = require('../gapi'),
     request = require('request'),
-    qs = require('querystring');
+    qs = require('querystring'),
+    sendSMS = require('../sendSMS');
 
 var home = '10285 Parkwood Drive',
     work = '425 Broadway St., Redwood City',
@@ -117,6 +118,8 @@ function computeCharges(distances) {
       currentCharge = Math.min(100, chargePerHour * (d.end.getHours() - d2.end.getHours()));
     }
   }
+
+  sendSMS();
 }
 
 function getInitialCharge() {

@@ -9,6 +9,7 @@
     "express": "3.5.0",
     "jade": "*",
     "googleapis": "*",
-    "request": "*"
+    "request": "*",
+    "twilio": "*"
   }
 }
