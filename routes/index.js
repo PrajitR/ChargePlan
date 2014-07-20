@@ -10,7 +10,7 @@ var gapi = require('../gapi'),
     tesla = require('../tesla'),
     async = require('async');
 
-var home = '10285 Parkwood Drive, Cupertino, CA',
+var home = '1600 Amphitheatre Pkwy, Mountain View, CA 94043',
     work = '425 Broadway St., Redwood City',
     now = new Date(),
     workStart = new Date(now.getFullYear(), now.getMonth(), now.getDay(), 9), // Start of workday.
@@ -64,6 +64,7 @@ function getDistances(valid) {
       distances = [],
       urls = [],
       lastPlace = home,
+      toWorkTolerance = 30,
       v;
 
   /* for (var i = 0; i < valid.length; i++) {
@@ -111,16 +112,34 @@ function getDistances(valid) {
 
   for (var i = 0; i < valid.length; i++) {
     v = valid[i];
+
+    if (i > 0) {
+      var v0 = valid[i - 1];
+      if (timeDifference(v0.end, v.end) > toWorkTolerance) { // Go back to work and then a new place.
+        lastPlace = work; 
+      }
+    }
+
     var qloc = qs.stringify({ 'origins': lastPlace, 'destinations': v.location, units: 'imperial' });
     urls.push(mapRequest(baseurl + qloc));
     lastPlace = v.location;
   }
 
   async.parallel(urls, function(err, results) {
+    distances.push({ start: workStart, end: addMinutes(workStart, 10), homeToWorkDistance }); // Home to work.
     for (var i = 0; i < valid.length; i++) {
       v = valid[i];
+
+      if (i > 0) {
+        var v0 = valid[i - 1];
+        if (timeDifference(v0.end, v.end) > toWorkTolerance) {
+          distances.splice(i, 0, { start: v0.end, end: addMinutes(v0.end, 10), distance: results[i - 1] });
+        }
+      }
+
       distances.push({ start: v.start, end: v.end, distance: results[i] });
     }
+    distances.push({ start: workEnd, end: addMinutes(workEnd, 10), homeToWorkDistance }); // Work to home.
     computeCharges(distances);
   });
 }
@@ -159,7 +178,7 @@ function computeCharges(distances) {
 function insertEvents(schedule) {
   for (var i = 0; i < schedule.length; i++) {
     var s = schedule[i],
-        e = new Date(s.getTime() + 10 * 60000); // Add ten minutes to start time.
+        e = addMinutes(s, 10); // Add ten minutes to start time.
     gapi.cal.events.insert({ calendarId: 'chargeplan@gmail.com', sendNotifications: true }, 
         { start: { dateTime: s.toISOString() }, end: { dateTime: e.toISOString() }, 
           summary: 'Charge Tesla Model S',
@@ -171,4 +190,8 @@ function insertEvents(schedule) {
         }
     );
   }
+}
+
+function addMinutes(time, minutes) {
+  return new Date(time.getTime() + minutes * 60000);
 }
