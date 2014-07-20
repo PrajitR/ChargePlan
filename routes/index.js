@@ -163,9 +163,14 @@ function computeCharges(distances) {
     if (currentCharge < 10) { // Below 10% charge is too low for comfort.
       var idx = Math.max(i - 1, 0),
           d2 = distances[idx];
+      if (timeDifference(d2.end, d.start) <= 31) { // In case of back-to-back events.
+        idx = Math.max(i - 2, 0);
+        d2 = distances[idx];
+      }
+
       chargingSchedule.push(d2.end);
       currentCharge = Math.min(100, 
-          currentCharge + d.distance / milesPerChargePercent + chargePerHour * (d.end.getHours() - d2.end.getHours())); // How much additional charge.
+          currentCharge + d.distance / milesPerChargePercent + chargePerHour * timeDifference(d2.end, d.start) * 60); // How much additional charge.
     }
   }
 
