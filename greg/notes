@@ -1,0 +1,56 @@
+Do I need to replan?
+
+Fetch calendar
+ Any new entries?
+Fetch car state
+ Battery down significantly?
+ Position changed significantly?
+
+Replanning
+
+Fetch calendar trips, position and times/durations
+Add in work commute trips: M-F 9am home-work, 5pm work-home
+
+Given the positions, make some guesses as to whether I
+might skip going to work/home because of the calendar
+trip
+
+Figure out when the battery goes negative
+Figure out when I need to charge
+Let driver know in advance
+
+----------------------------------------------------------------------
+
+Needed: npm package to compute distance between lat,lon pairs
+"am I near to this charger?"
+
+Perl example: https://metacpan.org/pod/Geo::Calc
+npm: https://www.npmjs.org/package/geo-distance
+
+----------------------------------------------------------------------
+Charge datastructure
+
+chargers = [ // in priority order
+   {
+      name: "home",
+      start: "10pm",
+      end: "9am",
+      rate: "17", // mph
+      longitude: 0.0,
+      latitude: -37.0
+   },
+   {
+      name: "5th and Mission",
+      rate: "17",
+      longitude: 0.0,
+      latitude: -37.0
+   },
+   {
+      name: "work",
+      start: "9am",
+      end: "5pm",
+      rate: "3",
+      longitude: 0.0,
+      latitude: -37.0
+   }
+];
