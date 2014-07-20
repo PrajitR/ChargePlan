@@ -14,4 +14,7 @@ function getInitialCharge() {
   return initialCharge;
 }
 
+if (require.main === module) {
+  getInitialCharge();
+}
 exports.getInitialCharge = getInitialCharge;
