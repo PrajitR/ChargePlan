@@ -126,7 +126,7 @@ function getDistances(valid) {
   }
 
   async.parallel(urls, function(err, results) {
-    distances.push({ start: workStart, end: addMinutes(workStart, 10), homeToWorkDistance }); // Home to work.
+    distances.push({ start: workStart, end: addMinutes(workStart, 10), distance: homeToWorkDistance }); // Home to work.
     for (var i = 0; i < valid.length; i++) {
       v = valid[i];
 
@@ -139,7 +139,7 @@ function getDistances(valid) {
 
       distances.push({ start: v.start, end: v.end, distance: results[i] });
     }
-    distances.push({ start: workEnd, end: addMinutes(workEnd, 10), homeToWorkDistance }); // Work to home.
+    distances.push({ start: workEnd, end: addMinutes(workEnd, 10), distance: homeToWorkDistance }); // Work to home.
     computeCharges(distances);
   });
 }
