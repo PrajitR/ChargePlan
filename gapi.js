@@ -10,7 +10,7 @@ var fs = require('fs'),
 
 calendar_auth_url = oauth2Client.generateAuthUrl({
   access_type: 'offline',
-  scope: 'https://www.googleapis.com/auth/calendar.readonly'
+  scope: 'https://www.googleapis.com/auth/calendar'
 });
 
 googleapis
@@ -20,8 +20,7 @@ googleapis
     if (!err) callback(client);
   });
 
-var callback = function(clients) {
-  console.log(clients);
+function callback(clients) {
   exports.cal = clients.calendar;
   exports.oauth = clients.oauth2;
   exports.url = calendar_auth_url;
