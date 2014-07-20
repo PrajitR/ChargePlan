@@ -6,9 +6,10 @@ var gapi = require('../gapi'),
     request = require('request'),
     qs = require('querystring'),
     fs = require('fs'),
-    sendSMS = require('../sendSMS');
+    sendSMS = require('../sendSMS'),
+    async = require('async');
 
-var home = '10285 Parkwood Drive',
+var home = '10285 Parkwood Drive, Cupertino, CA',
     work = '425 Broadway St., Redwood City',
     now = new Date(),
     workStart = new Date(now.getFullYear(), now.getMonth(), now.getDay(), 9), // Start of workday.
@@ -30,7 +31,7 @@ exports.oauthcallback = function oauthcallback(req, res) {
 };
 
 function getData() {
-  gapi.cal.events.list({ calendarId: 'prajitram@gmail.com' }).withAuthClient(gapi.client).execute(
+  gapi.cal.events.list({ calendarId: 'chargeplan@gmail.com' }).withAuthClient(gapi.client).execute(
     function(err, results) {
       if (err) console.log(err);
       locationsAndTimes(results);
@@ -46,8 +47,8 @@ function locationsAndTimes(data) {
   for (var i = 0; i < items.length; i++) {
     var item = items[i],
         location = item.location,
-        start = new Date(item.start.datetime),
-        end = new Date(item.end.datetime);
+        start = new Date(item.start.dateTime),
+        end = new Date(item.end.dateTime);
 
     if (location) {
       valid.push({ location: location, start: start, end: end });
@@ -60,10 +61,11 @@ function locationsAndTimes(data) {
 function getDistances(valid) {
   var baseurl = 'http://maps.googleapis.com/maps/api/distancematrix/json?',
       distances = [],
+      urls = [],
       lastPlace = home,
       v;
 
-  for (var i = 0; i < valid.length; i++) {
+  /* for (var i = 0; i < valid.length; i++) {
     v = valid[i];
 
     if (i > 0) { // Must start at home before anything else.
@@ -72,7 +74,7 @@ function getDistances(valid) {
         lastPlace = v0.location;
       } else {
         // Get back to work.
-        distances.push({ start: v0.end, v.start, distances[distances.length - 1].distance });
+        distances.push({ start: v0.end, end: v.start, distance: dist || 20.0 });
         lastPlace = work;
       }
     } else { 
@@ -81,10 +83,12 @@ function getDistances(valid) {
       }
     }
 
-    var qloc = qs.stringify({ 'origins': lastPlace, 'destinations': v.location });
+    var qloc = qs.stringify({ 'origins': lastPlace, 'destinations': v.location, metric: 'imperial' });
+    console.log(baseurl + qloc);
     request(baseurl + qloc, function (error, response, body) {
-      var mileString = JSON.parse(body)['rows']['elements']['distance']['text'],
-          dist = +(mileString.split(' ')[0]);
+      var mileString = JSON.parse(body)['rows']['elements']['distance']['text'];
+      dist = +(mileString.split(' ')[0]);
+      console.log(lastPlace + ' //// ' + v.location + ' //// ' + dist);
       distances.push({ start: v.start, end: v.end, distance: dist });
     });
   }
@@ -92,8 +96,32 @@ function getDistances(valid) {
   if (v.end.getHours() < workEnd.getHours()) {
     distances.push({ start: v.end, end: workEnd, distance: homeToWorkDistance }); // Work to home.
   }
+  */
 
-  computeCharges(distances);
+  function mapRequest(url) {
+    return function(callback) {
+      request(url, function (error, response, body) {
+        var mileString = (JSON.parse(body))['rows'][0]['elements'][0]['distance']['text'],
+            dist = +(mileString.split(' ')[0]);
+        callback(error, dist);
+      });
+    };
+  }
+
+  for (var i = 0; i < valid.length; i++) {
+    v = valid[i];
+    var qloc = qs.stringify({ 'origins': lastPlace, 'destinations': v.location, units: 'imperial' });
+    urls.push(mapRequest(baseurl + qloc));
+    lastPlace = v.location;
+  }
+
+  async.parallel(urls, function(err, results) {
+    for (var i = 0; i < valid.length; i++) {
+      v = valid[i];
+      distances.push({ start: v.start, end: v.end, distance: results[i] });
+    }
+    computeCharges(distances);
+  });
 }
 
 function timeDifference(t1, t2) {
@@ -104,27 +132,32 @@ function timeDifference(t1, t2) {
 
 function computeCharges(distances) {
   var milesPerChargePercent = 2.4, // Estimated 2.4 miles for every 1% of charge.  
-      chargePerHouse = 12, // Estimated 12% battery level increase per hour.
+      chargePerHour = 12, // Estimated 12% battery level increase per hour.
       currentCharge = getInitialCharge(),
       chargingSchedule = [];
 
   for (var i = 0; i < distances.length; i++) {
     var d = distances[i];
-    currentCharge -= d.distance * milesPerChargePercent;
+    currentCharge -= d.distance / milesPerChargePercent;
 
     if (currentCharge < 10) { // Below 10% charge is too low for comfort.
       var idx = Math.max(i - 1, 0),
           d2 = distances[idx];
       chargingSchedule.push(d2.end);
-      currentCharge = Math.min(100, chargePerHour * (d.end.getHours() - d2.end.getHours()));
+      currentCharge = Math.min(100, 
+          currentCharge + d.distance / milesPerChargePercent + chargePerHour * (d.end.getHours() - d2.end.getHours())); // How much additional charge.
     }
   }
 
-  sendSMS();
+  if (chargingSchedule.length > 0) {
+    sendSMS(chargingSchedule[0]);
+  }
+  insertEvents(chargingSchedule);
 }
 
+
 function getInitialCharge() {
-  var initialCharge = 100,
+  /*var initialCharge = 100,
       body = fs.readFileSync('tesla.out').toString().split('\n'),
       info;
 
@@ -137,5 +170,23 @@ function getInitialCharge() {
   info = eval(info.join('')); // Otherwise it's a pain to convert to a valid JSON.
 
   initialCharge = info['battery_level'];
-  return initialCharge;
+  */
+  return 20;
+}
+
+function insertEvents(schedule) {
+  for (var i = 0; i < schedule.length; i++) {
+    var s = schedule[i],
+        e = new Date(s.getTime() + 10 * 60000); // Add ten minutes to start time.
+    gapi.cal.events.insert({ calendarId: 'chargeplan@gmail.com', sendNotifications: true }, 
+        { start: { dateTime: s.toISOString() }, end: { dateTime: e.toISOString() }, 
+          summary: 'Charge Tesla Model S',
+          description: 'You need to charge your Model S to make your next trip.' })
+      .withAuthClient(gapi.client).execute(
+        function(err, results) {
+          if (err) console.log(err);
+          console.log(results);
+        }
+    );
+  }
 }
