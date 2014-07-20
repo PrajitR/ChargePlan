@@ -7,6 +7,7 @@ var gapi = require('../gapi'),
     qs = require('querystring'),
     fs = require('fs'),
     sendSMS = require('../sendSMS'),
+    tesla = require('../tesla'),
     async = require('async');
 
 var home = '10285 Parkwood Drive, Cupertino, CA',
@@ -133,7 +134,7 @@ function timeDifference(t1, t2) {
 function computeCharges(distances) {
   var milesPerChargePercent = 2.4, // Estimated 2.4 miles for every 1% of charge.  
       chargePerHour = 12, // Estimated 12% battery level increase per hour.
-      currentCharge = getInitialCharge(),
+      currentCharge = tesla.getInitialCharge(),
       chargingSchedule = [];
 
   for (var i = 0; i < distances.length; i++) {
@@ -153,25 +154,6 @@ function computeCharges(distances) {
     sendSMS(chargingSchedule[0]);
   }
   insertEvents(chargingSchedule);
-}
-
-
-function getInitialCharge() {
-  /*var initialCharge = 100,
-      body = fs.readFileSync('tesla.out').toString().split('\n'),
-      info;
-
-  for (var i = body.length - 1; i >= 0; i--) { // Pick out valid part of file.
-    if (body[i].indexOf('{') != -1) { // Pick out the last object.
-      info = body.slice(i);
-      break;
-    }
-  }
-  info = eval(info.join('')); // Otherwise it's a pain to convert to a valid JSON.
-
-  initialCharge = info['battery_level'];
-  */
-  return 20;
 }
 
 function insertEvents(schedule) {
