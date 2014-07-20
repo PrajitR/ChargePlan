@@ -13,8 +13,4 @@ function sendMessage() {
   });
 }
 
-<<<<<<< HEAD
 modules.exports = sendMessage;
-=======
-exports.sendMessage = sendMessage;
->>>>>>> 0794483563dd2ac91c37fa78ff9a0957c6f5c017
