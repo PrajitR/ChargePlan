@@ -1,4 +1,5 @@
 var fs = require('fs');
+require('get_tesla_data')();
 
 function getInitialCharge() {
   var initialCharge = 100,

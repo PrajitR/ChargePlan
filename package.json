@@ -11,6 +11,7 @@
     "googleapis": "*",
     "request": "*",
     "twilio": "*",
-    "async": "*"
+    "async": "*",
+    "teslams": "*"
   }
 }
