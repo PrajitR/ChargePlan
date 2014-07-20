@@ -5,6 +5,7 @@
 var gapi = require('../gapi'),
     request = require('request'),
     qs = require('querystring'),
+    fs = require('fs'),
     sendSMS = require('../sendSMS');
 
 var home = '10285 Parkwood Drive',
@@ -123,6 +124,18 @@ function computeCharges(distances) {
 }
 
 function getInitialCharge() {
-  var initialCharge = 100;
+  var initialCharge = 100,
+      body = fs.readFileSync('tesla.out').toString().split('\n'),
+      info;
+
+  for (var i = body.length - 1; i >= 0; i--) { // Pick out valid part of file.
+    if (body[i].indexOf('{') != -1) { // Pick out the last object.
+      info = body.slice(i);
+      break;
+    }
+  }
+  info = eval(info.join('')); // Otherwise it's a pain to convert to a valid JSON.
+
+  initialCharge = info['battery_level'];
   return initialCharge;
 }
